@@ -49,7 +49,6 @@ void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
   fntrow fontdata[FNTCHARS][FNTHEIGHT], int ox, int oy)
   {
     unsigned x, y, z;
-    int scaleFactor;
     SDL_Color fgColor;
     SDL_Color bgColor;
 
@@ -57,38 +56,24 @@ void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
     color_to_rgb(&fgColor, pixel->alphanumColor);
     color_to_rgb(&bgColor, pixel->bgColor);
 
-    /* Determine Font Height */
-    switch (pixel->heightMode) {
-      case SINGLE:
-      scaleFactor = 1;
-      break;
-      case DOUBLE:
-      scaleFactor = DOUBLE_SCALE_FACTOR;
-      break;
-      default:
-      scaleFactor = 1;
-      break;
-    }
-
-    /* Determine which part of the character will be displayed */
-    switch (pixel->charPart) {
-      case WHOLE:
-      case TOP_HALF:
-      z = 0;
-      break;
-      case BOTTOM_HALF:
-      z = FNTHEIGHT/DOUBLE_SCALE_FACTOR;
-      break;
-      default:
-      z=0;
-      break;
-    }
-
-    /* z is used to keep track which "row" of the font is rendered.
-    * The idea is that depending on the scale factor each row is repeated
-    * nth times.
-    */
+    /*
+     * Pick the source font row directly for every output scanline.
+     * Single-height characters use all 18 rows.  Double-height characters
+     * repeat each source row twice: rows 0-8 for the top half and 9-17 for
+     * the bottom half.  This also prevents the old bottom-half path from
+     * advancing z to 18 and reading past the font array.
+     */
     for(y = 0; y < FNTHEIGHT; y++) {
+      if (pixel->heightMode == DOUBLE) {
+        z = y / DOUBLE_SCALE_FACTOR;
+        if (pixel->charPart == BOTTOM_HALF) {
+          z += FNTHEIGHT / DOUBLE_SCALE_FACTOR;
+        }
+      }
+      else {
+        z = y;
+      }
+
       for(x = 0; x < FNTWIDTH; x++) {
         if(fontdata[pixel->character - FNT1STCHAR][z] >> (FNTWIDTH - 1 - x) & 1){
           Neill_SDL_SetDrawColour(sw, fgColor.r, fgColor.g, fgColor.b);
@@ -98,10 +83,6 @@ void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
           Neill_SDL_SetDrawColour(sw, bgColor.r, bgColor.g, bgColor.b);
           Neill_SDL_DrawPoint(sw, x + ox, y+oy);
         }
-      }
-      /* Here's where it happens */
-      if (y%scaleFactor == 0) {
-        z++;
       }
     }
   }
