@@ -18,15 +18,218 @@ static void usage(const char *program)
   fprintf(stderr, "Example: %s --vbit2 127.0.0.1 19761 100\n", program);
 }
 
+static Teletext* teletext_from_page(
+  unsigned char page[MAX_LINES][MAX_LENGTH])
+{
+  FILE* ifp;
+  Teletext* teletext;
+
+  ifp = tmpfile();
+  if (ifp == NULL) {
+    fprintf(stderr, "Unable to create temporary page file.\n");
+    return NULL;
+  }
+
+  if (fwrite(page, 1, MAX_LINES * MAX_LENGTH, ifp) !=
+      (size_t)(MAX_LINES * MAX_LENGTH)) {
+    fprintf(stderr, "Unable to write captured teletext page.\n");
+    fclose(ifp);
+    return NULL;
+  }
+
+  rewind(ifp);
+  teletext = TLT_init(ifp);
+  fclose(ifp);
+
+  return teletext;
+}
+
+static int key_to_digit(SDLKey key)
+{
+  if (key >= SDLK_0 && key <= SDLK_9) {
+    return key - SDLK_0;
+  }
+
+  if (key >= SDLK_KP0 && key <= SDLK_KP9) {
+    return key - SDLK_KP0;
+  }
+
+  return -1;
+}
+
+static void set_page_caption(int pageNumber)
+{
+  char caption[64];
+
+  sprintf(caption, "Teletext - %03X", (unsigned int)pageNumber);
+  SDL_WM_SetCaption(caption, caption);
+}
+
+static void set_waiting_caption(int pageNumber)
+{
+  char caption[64];
+
+  sprintf(caption, "Teletext - waiting for %03X",
+    (unsigned int)pageNumber);
+  SDL_WM_SetCaption(caption, caption);
+}
+
+static void set_entry_caption(int *digits, int count)
+{
+  char caption[64];
+
+  if (count == 1) {
+    sprintf(caption, "Teletext - %d__", digits[0]);
+  }
+  else if (count == 2) {
+    sprintf(caption, "Teletext - %d%d_", digits[0], digits[1]);
+  }
+  else {
+    sprintf(caption, "Teletext");
+  }
+
+  SDL_WM_SetCaption(caption, caption);
+}
+
+static int run_vbit2_viewer(const char *host, int port, int initialPage)
+{
+  VBIT2_Client client;
+  SDL_Simplewin sw;
+  fntrow fontdata[FNTCHARS][FNTHEIGHT];
+  unsigned char page[MAX_LINES][MAX_LENGTH];
+  unsigned char lastPage[MAX_LINES][MAX_LENGTH];
+  Teletext* teletext;
+  SDL_Event event;
+  SDLKey key;
+  int digits[3];
+  int digit;
+  int digitCount;
+  int requestedPage;
+  int currentPage;
+  int haveLastPage;
+  int running;
+  int status;
+  int result;
+
+  if (VBIT2_open(&client, host, port, initialPage) != 0) {
+    return EXIT_FAILURE;
+  }
+
+  TLT_SDL_init(&sw, fontdata);
+  currentPage = initialPage;
+  digitCount = 0;
+  haveLastPage = 0;
+  running = 1;
+  result = EXIT_SUCCESS;
+
+  set_waiting_caption(currentPage);
+
+  while (running) {
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) {
+        running = 0;
+      }
+      else if (event.type == SDL_KEYDOWN) {
+        key = event.key.keysym.sym;
+
+        if (key == SDLK_ESCAPE || key == SDLK_q) {
+          running = 0;
+        }
+        else if (key == SDLK_BACKSPACE) {
+          if (digitCount > 0) {
+            digitCount--;
+            if (digitCount > 0) {
+              set_entry_caption(digits, digitCount);
+            }
+            else {
+              set_page_caption(currentPage);
+            }
+          }
+        }
+        else {
+          digit = key_to_digit(key);
+          if (digit >= 0) {
+            /*
+             * Normal television Teletext page entry is three digits and
+             * magazine numbers run from 1 through 8.
+             */
+            if (digitCount == 0 && (digit < 1 || digit > 8)) {
+              continue;
+            }
+
+            digits[digitCount++] = digit;
+
+            if (digitCount < 3) {
+              set_entry_caption(digits, digitCount);
+            }
+            else {
+              requestedPage = (digits[0] << 8) |
+                              (digits[1] << 4) |
+                               digits[2];
+
+              if (VBIT2_set_page(&client, requestedPage) == 0) {
+                currentPage = requestedPage;
+                haveLastPage = 0;
+                set_waiting_caption(currentPage);
+              }
+
+              digitCount = 0;
+            }
+          }
+        }
+      }
+    }
+
+    if (!running) {
+      break;
+    }
+
+    /*
+     * Keep consuming the VBIT2 service while also returning to SDL often
+     * enough for terminal keyboard input to remain responsive.
+     */
+    status = VBIT2_poll(&client, page, 40);
+    if (status < 0) {
+      result = EXIT_FAILURE;
+      break;
+    }
+
+    if (status > 0) {
+      /*
+       * VBIT2 repeats pages continuously.  Only repaint when the selected
+       * page actually changes; this gives live clocks and subpages without
+       * retransmitting identical SIXEL frames.
+       */
+      if (!haveLastPage ||
+          memcmp(page, lastPage, (size_t)(MAX_LINES * MAX_LENGTH)) != 0) {
+        teletext = teletext_from_page(page);
+        if (teletext == NULL) {
+          result = EXIT_FAILURE;
+          break;
+        }
+
+        TLT_SDL_render_page(&sw, teletext, fontdata);
+        TLT_free(&teletext);
+
+        memcpy(lastPage, page, (size_t)(MAX_LINES * MAX_LENGTH));
+        haveLastPage = 1;
+        set_page_caption(currentPage);
+      }
+    }
+  }
+
+  VBIT2_close(&client);
+  SDL_Quit();
+
+  return result;
+}
+
 int main (int argc, char* argv[]) {
   FILE* ifp;
   Teletext* teletext;
-  unsigned char page[MAX_LINES][MAX_LENGTH];
   char* endptr;
   long port;
   long pageNumber;
-
-  ifp = NULL;
 
   if (argc == 5 && strcmp(argv[1], "--vbit2") == 0) {
     endptr = NULL;
@@ -45,39 +248,24 @@ int main (int argc, char* argv[]) {
       return EXIT_FAILURE;
     }
 
-    if (VBIT2_capture_page(argv[2], (int)port, (int)pageNumber, page) != 0) {
-      return EXIT_FAILURE;
-    }
-
-    ifp = tmpfile();
-    if (ifp == NULL) {
-      ON_ERROR("Unable to create temporary page file.\n");
-    }
-
-    if (fwrite(page, 1, MAX_LINES * MAX_LENGTH, ifp) !=
-        (size_t)(MAX_LINES * MAX_LENGTH)) {
-      fclose(ifp);
-      ON_ERROR("Unable to write captured teletext page.\n");
-    }
-    rewind(ifp);
+    return run_vbit2_viewer(argv[2], (int)port, (int)pageNumber);
   }
-  else if (argc == 2) {
+
+  if (argc == 2) {
     ifp = fopen(argv[1], "rb");
     if (ifp == NULL) {
       ON_ERROR("Teletext file not found.\n");
     }
+
+    teletext = TLT_init(ifp);
+    fclose(ifp);
+
+    TLT_SDL_render(teletext);
+    TLT_free(&teletext);
+
+    return EXIT_SUCCESS;
   }
-  else {
-    usage(argv[0]);
-    return EXIT_FAILURE;
-  }
 
-  teletext = TLT_init(ifp);
-  fclose(ifp);
-
-  /* Render teletext with SDL */
-  TLT_SDL_render(teletext);
-  TLT_free(&teletext);
-
-  return 0;
+  usage(argv[0]);
+  return EXIT_FAILURE;
 }
