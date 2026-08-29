@@ -92,11 +92,11 @@ void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
       for(x = 0; x < FNTWIDTH; x++) {
         if(fontdata[pixel->character - FNT1STCHAR][z] >> (FNTWIDTH - 1 - x) & 1){
           Neill_SDL_SetDrawColour(sw, fgColor.r, fgColor.g, fgColor.b);
-          SDL_RenderDrawPoint(sw->renderer, x + ox, y+oy);
+          Neill_SDL_DrawPoint(sw, x + ox, y+oy);
         }
         else{
           Neill_SDL_SetDrawColour(sw, bgColor.r, bgColor.g, bgColor.b);
-          SDL_RenderDrawPoint(sw->renderer, x + ox, y+oy);
+          Neill_SDL_DrawPoint(sw, x + ox, y+oy);
         }
       }
       /* Here's where it happens */
@@ -140,7 +140,7 @@ void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
           rectangle.x = offset_x;
           rectangle.y = offset_y;
           if (pixel->blockGraphic->sixels[i][j]) {
-            SDL_RenderFillRect(sw->renderer, &rectangle);
+            Neill_SDL_FillRect(sw, &rectangle);
           }
           offset_x += FNTWIDTH_CON_SIXEL;
         }
