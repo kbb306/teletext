@@ -133,7 +133,7 @@ int VBIT2_capture_page(const char *host, int port, int pageNumber,
    targetPage = pageNumber & 0xff;
 
    if (targetMagazine < 1 || targetMagazine > 8) {
-      fprintf(stderr, "Invalid teletext page %03X\n", pageNumber);
+      fprintf(stderr, "Invalid teletext page %03X\n", (unsigned int)pageNumber);
       return -1;
    }
 
@@ -151,7 +151,7 @@ int VBIT2_capture_page(const char *host, int port, int pageNumber,
    collecting = 0;
 
    fprintf(stderr, "Waiting for teletext page %03X from %s:%d...\n",
-      pageNumber, host, port);
+      (unsigned int)pageNumber, host, port);
 
    for (;;) {
       if (recv_exact(sock, frame, VBIT2_FRAME_SIZE) != 0) {
