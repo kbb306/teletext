@@ -213,7 +213,9 @@ static int run_vbit2_viewer(const char *host, int port, int initialPage)
 
         memcpy(lastPage, page, (size_t)(MAX_LINES * MAX_LENGTH));
         haveLastPage = 1;
-        set_page_caption(currentPage);
+        if (digitCount == 0) {
+          set_page_caption(currentPage);
+        }
       }
     }
   }
