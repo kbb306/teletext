@@ -24,13 +24,24 @@ TokenStream* TLT_tokenize_file(FILE* ifp) {
 	tokenStream->tokenCount = 0;
 
 	for(i=0; i < MAX_LINES; i++) {
-		/* Fill line with default a0 tokens in case file includes less than 1000 tokens*/
-		memset(tokenStream->tokens[i], 0xa0, MAX_LENGTH);
 		j = 0;
 		while (j < MAX_LENGTH && (c = getc(ifp)) != EOF) {
 			tokenStream->tokens[i][j] = tokenize(c);
 			tokenStream->tokenCount++;
 			tokenStream->tokens[i][j]->n = tokenStream->tokenCount;
+			tokenStream->tokens[i][j]->line = i+1;
+			j++;
+		}
+
+		/*
+		 * Pad short input with real space tokens.  The old code used memset()
+		 * on an array of Token pointers, which happened to be harmless for a
+		 * complete 1000-byte page because every pointer was overwritten, but
+		 * left invalid pointers behind for short files.
+		 */
+		while (j < MAX_LENGTH) {
+			tokenStream->tokens[i][j] = tokenize(0xa0);
+			tokenStream->tokens[i][j]->n = (i * MAX_LENGTH) + j + 1;
 			tokenStream->tokens[i][j]->line = i+1;
 			j++;
 		}
