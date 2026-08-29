@@ -66,12 +66,19 @@ void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
   fntrow fontdata[FNTCHARS][FNTHEIGHT], int ox, int oy)
   {
     unsigned x, y, z;
+    unsigned char chr;
     SDL_Color fgColor;
     SDL_Color bgColor;
 
     /* Colors to actual RGB */
     color_to_rgb(&fgColor, pixel->alphanumColor);
     color_to_rgb(&bgColor, pixel->bgColor);
+
+    /* Never allow malformed or unsupported input to index outside the font. */
+    chr = pixel->character;
+    if (chr < FNT1STCHAR || chr >= FNT1STCHAR + FNTCHARS) {
+      chr = ' ';
+    }
 
     /*
      * Pick the source font row directly for every output scanline.
@@ -92,7 +99,7 @@ void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
       }
 
       for(x = 0; x < FNTWIDTH; x++) {
-        if(fontdata[pixel->character - FNT1STCHAR][z] >> (FNTWIDTH - 1 - x) & 1){
+        if(fontdata[chr - FNT1STCHAR][z] >> (FNTWIDTH - 1 - x) & 1){
           Neill_SDL_SetDrawColour(sw, fgColor.r, fgColor.g, fgColor.b);
           Neill_SDL_DrawPoint(sw, x + ox, y+oy);
         }
