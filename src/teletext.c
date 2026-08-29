@@ -28,11 +28,13 @@ Teletext* TLT_init(FILE* ifp) {
 
 void TLT_free(Teletext** p) {
   int i, j;
-  Teletext* teletext = *p;
+  Teletext* teletext;
 
-  if (p==NULL) {
+  if (p == NULL || *p == NULL) {
     return;
   }
+
+  teletext = *p;
 
   for(i=0; i<MAX_LINES; i++) {
     for(j=0; j<MAX_LENGTH; j++) {
