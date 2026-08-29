@@ -17,7 +17,13 @@ Teletext* TLT_translate(TokenStream* tokenStream) {
     ON_ERROR("Null pointer to tokenstream.");
   }
 
-  teletext = (Teletext*) malloc(sizeof(Teletext));
+  /*
+   * Every Pixel contains an optional heap pointer.  The original one-shot
+   * viewer happened to get away with malloc() here, but repeated live-page
+   * decoding can leave untouched blockGraphic members containing garbage
+   * which TLT_free() later attempts to free.
+   */
+  teletext = (Teletext*) calloc(1, sizeof(Teletext));
   if (teletext == NULL) {
     ON_ERROR("Failed to create teletext");
   }
@@ -273,6 +279,13 @@ void set_character_part(Teletext* teletext, Pixel* pixel, State* currentState, i
 }
 
 void set_pixel_properties(Pixel* pixel, State* state) {
+  /*
+   * A pixel starts with no owned mosaic allocation.  Control cells and
+   * breakthrough text may never assign blockGraphic themselves.
+   */
+  pixel->blockGraphic = NULL;
+  pixel->character = ' ';
+  pixel->charPart = WHOLE;
   pixel->outputMode = state->outputMode;
   pixel->alphanumColor = state->alphanumColor;;
   pixel->graphicsColor = state->graphicsColor;
