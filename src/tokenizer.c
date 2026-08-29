@@ -104,11 +104,13 @@ Token* tokenize(unsigned char c) {
 
 void TLT_tokenstream_free(TokenStream** p) {
 	int i, j;
-	TokenStream* tokenStream = *p;
+	TokenStream* tokenStream;
 
-	if (p==NULL) {
+	if (p == NULL || *p == NULL) {
 		return;
 	}
+
+	tokenStream = *p;
 
 	/* Free tokens */
 	for(i=0; i<MAX_LINES; i++) {
