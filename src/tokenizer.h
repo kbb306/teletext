@@ -17,7 +17,7 @@
 #define ON_ERROR(STR) fprintf(stderr, STR); exit(EXIT_FAILURE)
 
 TokenStream* TLT_tokenize_file(FILE* ifp);
-Token* tokenize(char c);
+Token* tokenize(unsigned char c);
 void TLT_tokenstream_free(TokenStream** p);
 void debug_token(Token token);
 
