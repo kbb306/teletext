@@ -26,7 +26,7 @@
 
 /* Renders telextext using SDL */
 void TLT_SDL_render(Teletext* teletext);
-/* Based on neillsdl2 functions */
+/* Based on neillsdl functions */
 void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
 	fntrow fontdata[FNTCHARS][FNTHEIGHT], int ox, int oy);
 void TLT_SDL_Draw(SDL_Simplewin *sw, Pixel* pixel,
