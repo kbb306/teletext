@@ -91,6 +91,40 @@ static void set_entry_caption(int *digits, int count)
   SDL_WM_SetCaption(caption, caption);
 }
 
+static void set_no_fastext_caption(int pageNumber, const char *name)
+{
+  char caption[80];
+
+  sprintf(caption, "Teletext - %03X has no %s link",
+    (unsigned int)pageNumber, name);
+  SDL_WM_SetCaption(caption, caption);
+}
+
+static int fastext_key(SDLKey key, const char **name)
+{
+  switch (key) {
+    case SDLK_r:
+      *name = "red";
+      return 0;
+    case SDLK_g:
+      *name = "green";
+      return 1;
+    case SDLK_y:
+      *name = "yellow";
+      return 2;
+    case SDLK_b:
+      *name = "blue";
+      return 3;
+    case SDLK_i:
+      *name = "index";
+      return 5;
+    default:
+      break;
+  }
+
+  return -1;
+}
+
 static int run_vbit2_viewer(const char *host, int port, int initialPage)
 {
   VBIT2_Client client;
@@ -104,6 +138,9 @@ static int run_vbit2_viewer(const char *host, int port, int initialPage)
   int digits[3];
   int digit;
   int digitCount;
+  int fastextLink;
+  int fastextPage;
+  const char *fastextName;
   int requestedPage;
   int currentPage;
   int haveLastPage;
@@ -134,6 +171,20 @@ static int run_vbit2_viewer(const char *host, int port, int initialPage)
 
         if (key == SDLK_ESCAPE || key == SDLK_q) {
           running = 0;
+        }
+        else if ((fastextLink = fastext_key(key, &fastextName)) >= 0) {
+          digitCount = 0;
+
+          if (VBIT2_get_fastext(&client, fastextLink, &fastextPage)) {
+            if (VBIT2_set_page(&client, fastextPage) == 0) {
+              currentPage = fastextPage;
+              haveLastPage = 0;
+              set_waiting_caption(currentPage);
+            }
+          }
+          else {
+            set_no_fastext_caption(currentPage, fastextName);
+          }
         }
         else if (key == SDLK_BACKSPACE) {
           if (digitCount > 0) {
