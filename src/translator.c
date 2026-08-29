@@ -53,9 +53,23 @@ void process_token(TokenStream* tokenStream, Teletext* teletext,
 
   token = tokenStream->tokens[row][column];
 
-  if(token->type == SYMBOL || token->type == UNUSED) {
+  if(token->type == SYMBOL) {
     handle_symbol_token(teletext, token, &(teletext->pixels[row][column]),
     currentState, nextState, row, column);
+  } else if (token->type == UNUSED) {
+    /*
+     * Unsupported Level 1 control codes still occupy a display cell, but
+     * they are not printable glyphs.  Treat them as a blank/no-op rather
+     * than converting them to ASCII and indexing before the font table.
+     */
+    if (currentState->holdMode == HOLD && currentState->lastGraphic != NULL) {
+      set_pixel_to_hold(&(teletext->pixels[row][column]), currentState);
+    } else {
+      teletext->pixels[row][column].outputMode = TEXT;
+      teletext->pixels[row][column].heightMode = SINGLE;
+      teletext->pixels[row][column].charPart = WHOLE;
+      teletext->pixels[row][column].character = ' ';
+    }
   } else {
     handle_control_token(tokenStream, &(teletext->pixels[row][column]),
     currentState, nextState, row, column);
