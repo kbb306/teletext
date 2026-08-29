@@ -8,7 +8,7 @@
 
 void TLT_SDL_render(Teletext* teletext) {
   SDL_Simplewin sw;
-  char fontPath[] = "../source/m7fixed.fnt";
+  char fontPath[] = "m7fixed.fnt";
   fntrow fontdata[FNTCHARS][FNTHEIGHT];
   int i,j;
   int ox;
