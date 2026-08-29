@@ -18,6 +18,10 @@ typedef struct VBIT2_Client {
    unsigned char frame[VBIT2_FRAME_SIZE];
    unsigned char working[MAX_LINES][MAX_LENGTH];
    unsigned char completed[MAX_LINES][MAX_LENGTH];
+   int workingFastext[6];
+   int completedFastext[6];
+   int workingFastextValid[6];
+   int completedFastextValid[6];
 } VBIT2_Client;
 
 /* Open one persistent connection to a VBIT2 TCP packet server. */
@@ -34,6 +38,13 @@ int VBIT2_set_page(VBIT2_Client *client, int pageNumber);
  */
 int VBIT2_poll(VBIT2_Client *client,
    unsigned char page[MAX_LINES][MAX_LENGTH], int timeoutMs);
+
+/*
+ * Return one of the six FLOF/Fastext links attached to the most recently
+ * completed selected page.  Link order is red, green, yellow, cyan,
+ * unused, index.  Returns 1 for a usable link and 0 when absent/null.
+ */
+int VBIT2_get_fastext(VBIT2_Client *client, int link, int *pageNumber);
 
 void VBIT2_close(VBIT2_Client *client);
 
