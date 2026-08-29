@@ -2,9 +2,10 @@
 #define NEILLSDL_H_
 
 #include <SDL.h>
+#include "token.h"
 
-#define WWIDTH 800
-#define WHEIGHT 600
+#define WWIDTH (MAX_LENGTH * FNTWIDTH)
+#define WHEIGHT (MAX_LINES * FNTHEIGHT)
 
 /* Font stuff */
 typedef unsigned short fntrow;
