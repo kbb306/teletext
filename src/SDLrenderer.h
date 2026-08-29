@@ -24,7 +24,15 @@
 #define FNTWIDTH_SEP_SIXEL (((sizeof(fntrow)*8)/2)-1)
 #define FNTHEIGHT_SEP_SIXEL ((18/3) -1)
 
-/* Renders telextext using SDL */
+/* Initialise one persistent SDL teletext display. */
+void TLT_SDL_init(SDL_Simplewin *sw,
+   fntrow fontdata[FNTCHARS][FNTHEIGHT]);
+
+/* Render one page into an already-open SDL display. */
+void TLT_SDL_render_page(SDL_Simplewin *sw, Teletext* teletext,
+   fntrow fontdata[FNTCHARS][FNTHEIGHT]);
+
+/* Original one-shot renderer retained for local .m7 files. */
 void TLT_SDL_render(Teletext* teletext);
 /* Based on neillsdl functions */
 void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
