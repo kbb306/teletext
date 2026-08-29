@@ -51,7 +51,7 @@ TokenStream* TLT_tokenize_file(FILE* ifp) {
 }
 
 /* Tokenize input to basic control types */
-Token* tokenize(char c) {
+Token* tokenize(unsigned char c) {
 	Token* newToken;
 	unsigned char ch;
 
