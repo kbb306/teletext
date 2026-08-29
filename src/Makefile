@@ -4,7 +4,7 @@ INCS = teletext.h token.h tokenizer.h decoder.h translator.h SDLrenderer.h neill
 all: teletext
 
 teletext:	main.c teletext.c tokenizer.c decoder.c translator.c SDLrenderer.c neillsdl2.c $(INCS)
-	$(CC) main.c teletext.c tokenizer.c decoder.c translator.c SDLrenderer.c neillsdl2.c -o teletext -g -lm -O3 $(CFLAGS) `sdl2-config --cflags --libs`
+	$(CC) main.c teletext.c tokenizer.c decoder.c translator.c SDLrenderer.c neillsdl2.c -o teletext -g -lm -O3 $(CFLAGS) `sdl-config --cflags --libs`
 
 run: all
 	./teletext samples/test.m7
