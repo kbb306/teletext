@@ -3,11 +3,41 @@
 
 #include "token.h"
 
+#define VBIT2_PACKET_SIZE 42
+#define VBIT2_PACKETS_PER_FRAME 32
+#define VBIT2_FRAME_SIZE (VBIT2_PACKET_SIZE * VBIT2_PACKETS_PER_FRAME)
+
+typedef struct VBIT2_Client {
+   int sock;
+   int targetPageNumber;
+   int targetMagazine;
+   int targetPage;
+   int collecting;
+   int pageReady;
+   int frameBytes;
+   unsigned char frame[VBIT2_FRAME_SIZE];
+   unsigned char working[MAX_LINES][MAX_LENGTH];
+   unsigned char completed[MAX_LINES][MAX_LENGTH];
+} VBIT2_Client;
+
+/* Open one persistent connection to a VBIT2 TCP packet server. */
+int VBIT2_open(VBIT2_Client *client, const char *host, int port,
+   int pageNumber);
+
+/* Change the page being collected without reconnecting. */
+int VBIT2_set_page(VBIT2_Client *client, int pageNumber);
+
 /*
- * Capture one Level 1 teletext page from a VBIT2 TCP packet server.
- * pageNumber is the usual three-digit hexadecimal teletext number
- * (for example 0x100 or 0x8FF).
+ * Process network data for up to timeoutMs milliseconds.
+ * Returns 1 when a complete selected page is copied to page,
+ * 0 when no complete page is ready, and -1 if the connection is lost.
  */
+int VBIT2_poll(VBIT2_Client *client,
+   unsigned char page[MAX_LINES][MAX_LENGTH], int timeoutMs);
+
+void VBIT2_close(VBIT2_Client *client);
+
+/* Legacy one-shot helper retained for simple callers. */
 int VBIT2_capture_page(const char *host, int port, int pageNumber,
    unsigned char page[MAX_LINES][MAX_LENGTH]);
 
