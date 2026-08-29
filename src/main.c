@@ -39,7 +39,8 @@ int main (int argc, char* argv[]) {
     endptr = NULL;
     pageNumber = strtol(argv[4], &endptr, 16);
     if (endptr == argv[4] || *endptr != '\0' ||
-        pageNumber < 0x100 || pageNumber > 0x8fe) {
+        pageNumber < 0x100 || pageNumber > 0x8fe ||
+        (pageNumber & 0xff) == 0xff) {
       fprintf(stderr, "Invalid teletext page: %s\n", argv[4]);
       return EXIT_FAILURE;
     }
@@ -54,7 +55,7 @@ int main (int argc, char* argv[]) {
     }
 
     if (fwrite(page, 1, MAX_LINES * MAX_LENGTH, ifp) !=
-        MAX_LINES * MAX_LENGTH) {
+        (size_t)(MAX_LINES * MAX_LENGTH)) {
       fclose(ifp);
       ON_ERROR("Unable to write captured teletext page.\n");
     }
