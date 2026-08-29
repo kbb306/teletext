@@ -15,7 +15,7 @@
 
 #include "teletext.h"
 #include "rgb_colors.h"
-#include "neillsdl2.h"
+#include "neillsdl.h"
 
 #define DOUBLE_SCALE_FACTOR 2
 #define FNTWIDTH_CON_SIXEL ((sizeof(fntrow)*8)/2)
