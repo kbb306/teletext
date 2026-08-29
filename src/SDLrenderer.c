@@ -6,10 +6,28 @@
 
 #include "SDLrenderer.h"
 
+#ifndef TELETEXT_DATADIR
+#define TELETEXT_DATADIR "."
+#endif
+
 void TLT_SDL_init(SDL_Simplewin *sw,
   fntrow fontdata[FNTCHARS][FNTHEIGHT])
 {
-  char fontPath[] = "m7fixed.fnt";
+  char localFont[] = "m7fixed.fnt";
+  char installedFont[] = TELETEXT_DATADIR "/m7fixed.fnt";
+  char *fontPath;
+  FILE *fontTest;
+
+  /*
+   * Prefer the source-tree font while developing, then fall back to the
+   * installed data directory so the binary can be launched from anywhere.
+   */
+  fontPath = installedFont;
+  fontTest = fopen(localFont, "rb");
+  if (fontTest != NULL) {
+    fclose(fontTest);
+    fontPath = localFont;
+  }
 
   Neill_SDL_Init(sw);
   Neill_SDL_ReadFont(fontdata, fontPath);
