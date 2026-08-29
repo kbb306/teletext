@@ -6,16 +6,25 @@
 
 #include "SDLrenderer.h"
 
-void TLT_SDL_render(Teletext* teletext) {
-  SDL_Simplewin sw;
+void TLT_SDL_init(SDL_Simplewin *sw,
+  fntrow fontdata[FNTCHARS][FNTHEIGHT])
+{
   char fontPath[] = "m7fixed.fnt";
-  fntrow fontdata[FNTCHARS][FNTHEIGHT];
+
+  Neill_SDL_Init(sw);
+  Neill_SDL_ReadFont(fontdata, fontPath);
+}
+
+void TLT_SDL_render_page(SDL_Simplewin *sw, Teletext* teletext,
+  fntrow fontdata[FNTCHARS][FNTHEIGHT])
+{
   int i,j;
   int ox;
   int oy;
 
-  Neill_SDL_Init(&sw);
-  Neill_SDL_ReadFont(fontdata, fontPath);
+  /* Clear the old page before drawing the replacement. */
+  Neill_SDL_SetDrawColour(sw, 0, 0, 0);
+  SDL_FillRect(sw->screen, NULL, sw->drawColour);
 
   ox = 0;
   oy = 0;
@@ -25,10 +34,10 @@ void TLT_SDL_render(Teletext* teletext) {
     for(j=0; j<MAX_LENGTH; j++) {
       switch (teletext->pixels[i][j].outputMode) {
         case TEXT:
-        TLT_SDL_DrawChar(&sw, &(teletext->pixels[i][j]), fontdata, ox, oy);
+        TLT_SDL_DrawChar(sw, &(teletext->pixels[i][j]), fontdata, ox, oy);
         break;
         case GRAPHICS:
-        TLT_SDL_Draw(&sw, &(teletext->pixels[i][j]), ox, oy);
+        TLT_SDL_Draw(sw, &(teletext->pixels[i][j]), ox, oy);
         break;
       }
       ox += FNTWIDTH;
@@ -36,13 +45,21 @@ void TLT_SDL_render(Teletext* teletext) {
     oy += FNTHEIGHT;
   }
 
-  Neill_SDL_UpdateScreen(&sw);
+  Neill_SDL_UpdateScreen(sw);
+}
+
+void TLT_SDL_render(Teletext* teletext) {
+  SDL_Simplewin sw;
+  fntrow fontdata[FNTCHARS][FNTHEIGHT];
+
+  TLT_SDL_init(&sw, fontdata);
+  TLT_SDL_render_page(&sw, teletext, fontdata);
 
   do {
     Neill_SDL_Events(&sw);
   } while(!sw.finished);
 
-  atexit(SDL_Quit);
+  SDL_Quit();
 }
 
 void TLT_SDL_DrawChar(SDL_Simplewin *sw, Pixel* pixel,
