@@ -97,8 +97,16 @@ static int header_page_number(const unsigned char *packet)
 
 static void finish_page(VBIT2_Client *client)
 {
+   int i;
+
    memcpy(client->completed, client->working,
       (size_t)(MAX_LINES * MAX_LENGTH));
+
+   for (i = 0; i < 6; i++) {
+      client->completedFastext[i] = client->workingFastext[i];
+      client->completedFastextValid[i] = client->workingFastextValid[i];
+   }
+
    client->pageReady = 1;
 }
 
@@ -107,6 +115,10 @@ static void start_page(VBIT2_Client *client, const unsigned char *packet)
    int i;
 
    memset(client->working, 0x20, (size_t)(MAX_LINES * MAX_LENGTH));
+   for (i = 0; i < 6; i++) {
+      client->workingFastext[i] = 0;
+      client->workingFastextValid[i] = 0;
+   }
 
    /*
     * Packet 0 contains eight bytes of page addressing/control data followed
@@ -117,6 +129,70 @@ static void start_page(VBIT2_Client *client, const unsigned char *packet)
    }
 
    client->collecting = 1;
+}
+
+static void process_fastext(VBIT2_Client *client,
+   const unsigned char *packet)
+{
+   int designation;
+   int p;
+   int i;
+   int units;
+   int tens;
+   int s1;
+   int s2m1;
+   int s3;
+   int s4m23;
+   int relativeMagazine;
+   int magazine;
+   int page;
+
+   designation = hamming84_decode(packet[2]);
+   if (designation != 0) {
+      return;
+   }
+
+   p = 3;
+   for (i = 0; i < 6; i++) {
+      units = hamming84_decode(packet[p++]);
+      tens = hamming84_decode(packet[p++]);
+      s1 = hamming84_decode(packet[p++]);
+      s2m1 = hamming84_decode(packet[p++]);
+      s3 = hamming84_decode(packet[p++]);
+      s4m23 = hamming84_decode(packet[p++]);
+
+      if (units < 0 || tens < 0 || s1 < 0 ||
+          s2m1 < 0 || s3 < 0 || s4m23 < 0) {
+         client->workingFastextValid[i] = 0;
+         continue;
+      }
+
+      /*
+       * X/27/0 stores the link magazine relative to the current magazine.
+       * M1 is bit 3 of S2/M1; M2/M3 are bits 2-3 of S4/M2/M3.
+       */
+      relativeMagazine = (s2m1 & 0x08) >> 3;
+      relativeMagazine |= (s4m23 & 0x0c) >> 1;
+      magazine = relativeMagazine ^ client->targetMagazine;
+      if (magazine == 0) {
+         magazine = 8;
+      }
+
+      page = (magazine << 8) | (tens << 4) | units;
+
+      /*
+       * 8FF (and the legacy zero encoding) means no link.
+       * The decoded subpage fields are intentionally ignored for now;
+       * normal Fastext navigation treats the subpage as don't-care.
+       */
+      if ((page & 0xff) == 0xff || page == 0) {
+         client->workingFastextValid[i] = 0;
+      }
+      else {
+         client->workingFastext[i] = page;
+         client->workingFastextValid[i] = 1;
+      }
+   }
 }
 
 static void process_packet(VBIT2_Client *client,
@@ -155,10 +231,14 @@ static void process_packet(VBIT2_Client *client,
       return;
    }
 
-   if (client->collecting && mag == client->targetMagazine &&
-       row > 0 && row < MAX_LINES) {
-      for (i = 0; i < MAX_LENGTH; i++) {
-         client->working[row][i] = packet[i + 2] & 0x7f;
+   if (client->collecting && mag == client->targetMagazine) {
+      if (row > 0 && row < MAX_LINES) {
+         for (i = 0; i < MAX_LENGTH; i++) {
+            client->working[row][i] = packet[i + 2] & 0x7f;
+         }
+      }
+      else if (row == 27) {
+         process_fastext(client, packet);
       }
    }
 }
@@ -192,6 +272,15 @@ int VBIT2_set_page(VBIT2_Client *client, int pageNumber)
 
    memset(client->working, 0x20, (size_t)(MAX_LINES * MAX_LENGTH));
    memset(client->completed, 0x20, (size_t)(MAX_LINES * MAX_LENGTH));
+   {
+      int i;
+      for (i = 0; i < 6; i++) {
+         client->workingFastext[i] = 0;
+         client->completedFastext[i] = 0;
+         client->workingFastextValid[i] = 0;
+         client->completedFastextValid[i] = 0;
+      }
+   }
 
    return 0;
 }
@@ -286,6 +375,20 @@ int VBIT2_poll(VBIT2_Client *client,
    }
 
    return 0;
+}
+
+int VBIT2_get_fastext(VBIT2_Client *client, int link, int *pageNumber)
+{
+   if (client == NULL || pageNumber == NULL || link < 0 || link >= 6) {
+      return 0;
+   }
+
+   if (!client->completedFastextValid[link]) {
+      return 0;
+   }
+
+   *pageNumber = client->completedFastext[link];
+   return 1;
 }
 
 void VBIT2_close(VBIT2_Client *client)
