@@ -57,6 +57,12 @@ static int key_to_digit(SDLKey key)
   return -1;
 }
 
+static void terminal_beep(void)
+{
+  fputc('\a', stdout);
+  fflush(stdout);
+}
+
 static void set_page_caption(int pageNumber)
 {
   char caption[64];
@@ -183,6 +189,7 @@ static int run_vbit2_viewer(const char *host, int port, int initialPage)
             }
           }
           else {
+            terminal_beep();
             set_no_fastext_caption(currentPage, fastextName);
           }
         }
@@ -205,6 +212,7 @@ static int run_vbit2_viewer(const char *host, int port, int initialPage)
              * magazine numbers run from 1 through 8.
              */
             if (digitCount == 0 && (digit < 1 || digit > 8)) {
+              terminal_beep();
               continue;
             }
 
